@@ -12,17 +12,19 @@ echo " "
 read -p "Press [Enter] key to start build "
 echo " "
 
-mkdir -p ${QTDM_LIBINSTALL}/designer
+install -d -m 755 -g wheel ${QTDM_LIBINSTALL}/{designer,controlsystems}
 
-cp -v caQtDM_Binaries/caQtDM  ${QTDM_BININSTALL}/
-cp -v caQtDM_Binaries/adl2ui  ${QTDM_BININSTALL}/
-cp -v caQtDM_Binaries/edl2ui  ${QTDM_BININSTALL}/
+install -v -m 755 -g wheel caQtDM_Binaries/caQtDM  ${QTDM_BININSTALL}
+install -v -m 755 -g wheel caQtDM_Binaries/adl2ui  ${QTDM_BININSTALL}
+install -v -m 755 -g wheel caQtDM_Binaries/edl2ui  ${QTDM_BININSTALL}
 
-cp -v caQtDM_Binaries/libcaQtDM_Lib.so  ${QTDM_LIBINSTALL}/
-cp -v caQtDM_Binaries/libqtcontrols.so  ${QTDM_LIBINSTALL}/
-cp -v caQtDM_Binaries/designer/libqtcontrols_*_plugin.so  ${QTDM_LIBINSTALL}/designer/
+install -v -m 755 -g wheel caQtDM_Binaries/libcaQtDM_Lib.so  ${QTDM_LIBINSTALL}
+install -v -m 755 -g wheel caQtDM_Binaries/libqtcontrols.so  ${QTDM_LIBINSTALL}
+install -v -m 755 -g wheel caQtDM_Binaries/designer/libqtcontrols_*_plugin.so  ${QTDM_LIBINSTALL}/designer/
 
-cp -v startDM      ${QTDM_BININSTALL}/ 
+install -v -m 755 -g wheel startDM      ${QTDM_BININSTALL}/ 
+
+install -v -m 755 -g wheel caQtDM_Binaries/controlsystems/* ${QTDM_LIBINSTALL}/controlsystems/
 
 echo ""
 echo "Put these in your .profile"
