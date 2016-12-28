@@ -28,6 +28,9 @@
 #define QWT_DLL
 #endif
 
+#include <cmath>
+using namespace std;
+
 #include "qwtplotcurvenan.h"
 
 QwtPlotCurveNaN::QwtPlotCurveNaN(const QString& title)

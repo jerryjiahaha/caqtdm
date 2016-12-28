@@ -36,12 +36,15 @@
 #endif
 #endif
 
+#include <cmath>
 #include <qapplication.h>
 #include <qlayout.h>
 #include <qlabel.h>
 #include <qpainter.h>
 #include <QMetaProperty>
 #include "castripplot.h"
+
+using namespace std;
 
 // increase the array size given by the canvas width to be sure that the whole range is covered
 #define MAXIMUMSIZE 5000
