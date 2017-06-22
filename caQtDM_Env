@@ -1,5 +1,11 @@
 #!/bin/bash
 
+  # source local env file
+  if [ -f "./caQtDM_Env.local" ];     then source "./caQtDM_Env.local";
+  fi
+  # make -jX
+  if [ -z "$MAKEOPTS" ];              then export   MAKEOPTS="-j"`grep processor /proc/cpuinfo|wc -l`;
+  fi
   if [ -z "$QTHOME" ];                then export   QTHOME=/usr;
   fi
   if [ -z "$QWTHOME" ];               then export   QWTHOME=/usr;

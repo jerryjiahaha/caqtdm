@@ -34,5 +34,5 @@ read -p "Press [Enter] key to start build "
 echo ============ make all =================
 qmake all.pro
 #scan-build --use-analyzer Xcode make -j8
-make -j8
+make ${MAKEOPTS}
 

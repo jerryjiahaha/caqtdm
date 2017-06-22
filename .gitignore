@@ -3,6 +3,8 @@
 .qmake.stash
 Makefile
 build.log
+caQtDM_Env.local
+Makefile
 caQtDM_Binaries/
 caQtDM_Lib/Makefile
 caQtDM_Lib/caQtDM_Plugins/Makefile.csplugins
