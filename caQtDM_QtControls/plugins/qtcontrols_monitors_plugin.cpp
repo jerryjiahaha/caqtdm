@@ -268,12 +268,14 @@ QWidget *caThermoInterface::createWidget(QWidget* parent)
 
 caThermoInterface::caThermoInterface(QObject* parent) : CustomWidgetInterface_Monitors(parent)
 {
-    strng name[1], type[1] = {""};
-    longtext text[1] = {""};
+    strng name[3], type[3] = {""};
+    longtext text[3] = {CHANNEL, DECAYOPTION, DECAYTIME};
 
     strcpy(name[0], "channel");
     strcpy(type[0], "multiline");
-    d_domXml = XmlFunc("caThermo", "cathermo", 0, 0, 100, 30, name, type, text, 1);
+    strcpy(name[1], "decayOption");
+    strcpy(name[2], "decayTime");
+    d_domXml = XmlFunc("caThermo", "cathermo", 0, 0, 100, 30, name, type, text, 3);
     d_toolTip = "[Scale & Bar Monitor]";
     d_name = "caThermo";
     d_include = "caThermo";
@@ -467,8 +469,8 @@ QWidget *caCameraInterface::createWidget(QWidget* parent)
 
 caCameraInterface::caCameraInterface(QObject* parent) : CustomWidgetInterface_Monitors(parent)
 {
-    strng name[12], type[12] = {"","","","","","","","","","","",""};
-    longtext text[12] = {"","","","","","","","",CHANNELLIST,CHANNELLIST,STRINGFROMLIST,STRINGFROMLIST};
+    strng name[14], type[14] = {"","","","","","","","","","","","","",""};
+    longtext text[14] = {"","","","","","","","",CHANNELLIST,CHANNELLIST,STRINGFROMLIST,STRINGFROMLIST, "",""};
 
     strcpy(name[0], "channelData");
     strcpy(type[0], "multiline");
@@ -492,7 +494,11 @@ caCameraInterface::caCameraInterface(QObject* parent) : CustomWidgetInterface_Mo
     strcpy(type[10], "multiline");
     strcpy(name[11], "ROI_writeChannels");
     strcpy(type[11], "multiline");
-    d_domXml = XmlFunc("caCamera", "cacamera", 0, 0, 200, 200, name, type, text, 12);
+    strcpy(name[12], "channelXaverage");
+    strcpy(type[12], "multiline");
+    strcpy(name[13], "channelYaverage");
+    strcpy(type[13], "multiline");
+    d_domXml = XmlFunc("caCamera", "cacamera", 0, 0, 200, 200, name, type, text, 14);
     d_toolTip = "[Image from camera]";
     d_name = "caCamera";
     d_include = "caCamera";
@@ -523,7 +529,7 @@ caCalcInterface::caCalcInterface(QObject* parent) : CustomWidgetInterface_Monito
     strcpy(name[5], "variable");
     strcpy(type[5], "multiline");
 
-    d_domXml = XmlFunc("caCalc", "cacalc", 0, 0, 5, 5, name, type, text, 6);
+    d_domXml = XmlFunc("caCalc", "cacalc", 0, 0, 70, 20, name, type, text, 6);
     d_toolTip = "[define internal process variable]";
     d_name = "caCalc";
     d_include = "caCalc";
@@ -615,19 +621,19 @@ caScan2DInterface::caScan2DInterface(QObject* parent) : CustomWidgetInterface_Mo
     d_icon = QPixmap(":pixmaps/scan2d.png");
 }
 
-QWidget *caLineDemoInterface::createWidget(QWidget* parent)
+QWidget *caLineDrawInterface::createWidget(QWidget* parent)
 {
-    return new caLineDemo(parent);
+    return new caLineDraw(parent);
 }
 
-caLineDemoInterface::caLineDemoInterface(QObject* parent) : CustomWidgetInterface_Monitors(parent)
+caLineDrawInterface::caLineDrawInterface(QObject* parent) : CustomWidgetInterface_Monitors(parent)
 {
     strng name[1], type[1]  = {""};
     longtext text[1] = {""};
-    d_domXml = XmlFunc("caLineDemo", "calinedemo", 0, 0, 100, 20, name, type, text, 0);
-    d_toolTip = "[Text Demo Monitor (faster then caLineEdit)]";
-    d_name = "caLineDemo";
-    d_include = "caLineDemo";
+    d_domXml = XmlFunc("caLineDraw", "calinedraw", 0, 0, 100, 20, name, type, text, 0);
+    d_toolTip = "[Text Draw Monitor (faster then caLineEdit + vertical display)]";
+    d_name = "caLineDraw";
+    d_include = "caLineDraw";
     QPixmap qpixmap =   QPixmap(":pixmaps/textmonitor.png");
     d_icon = qpixmap.scaled(70, 70, Qt::IgnoreAspectRatio, Qt::FastTransformation);
 }
@@ -652,7 +658,7 @@ CustomWidgetCollectionInterface_Monitors::CustomWidgetCollectionInterface_Monito
     d_plugins.append(new caCalcInterface(this));
     d_plugins.append(new caWaterfallPlotInterface(this));
     d_plugins.append(new caScan2DInterface(this));
-    d_plugins.append(new caLineDemoInterface(this));
+    d_plugins.append(new caLineDrawInterface(this));
 }
 
 QList<QDesignerCustomWidgetInterface*> CustomWidgetCollectionInterface_Monitors::customWidgets(void) const

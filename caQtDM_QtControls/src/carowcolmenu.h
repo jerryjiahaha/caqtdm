@@ -37,7 +37,6 @@ class QGridLayout;
 
 class QTCON_EXPORT caRowColMenu : public QWidget
 {
-
     Q_OBJECT
 
     Q_ENUMS(Stacking)
@@ -60,7 +59,6 @@ class QTCON_EXPORT caRowColMenu : public QWidget
     Q_PROPERTY(QString styleSheet READ styleSheet WRITE noStyle DESIGNABLE false)
 
 public:
-
 #include "caPropHandle.h"
 
     void noStyle(QString style) {Q_UNUSED(style);}
@@ -80,17 +78,17 @@ public:
     QString getLabels() const {return labels.join(";");}
     void setLabels(QString const &newL);
     QStringList getLabelsList() const {return labels;}
-    void setLabelsList(QStringList list) {labels = list; updatePropertyEditorItem(this, "labels");}
+    void setLabelsList(QStringList list) {labels = list; updatePropertyEditorItem(this, "labels"); populateCells();}
 
     QString getFiles() const {return files.join(";");}
     void setFiles(QString const &newL);
     QStringList getFilesList() const {return files;}
-    void setFilesList(QStringList list) {files = list; updatePropertyEditorItem(this, "files");}
+    void setFilesList(QStringList list) {files = list; updatePropertyEditorItem(this, "files"); populateCells();}
 
     QString getArgs() const {return args.join(";");}
     void setArgs(QString const &newL) ;
     QStringList getArgsList() const {return args;}
-    void setArgsList(QStringList list) {args = list; updatePropertyEditorItem(this, "args");}
+    void setArgsList(QStringList list) {args = list; updatePropertyEditorItem(this, "args"); populateCells();}
 
     QString getLabel() const {return thisLabel;}
     void setLabel(QString const &label);
@@ -102,20 +100,17 @@ public:
 
     void updateLabel();
     void updateColors();
-    void updateFontScaleMode();
+    void updateFontScaleMode(); 
 
 protected:
-
        void populateCells();
        void resizeEvent(QResizeEvent *e);
 
 signals:
-
     void clicked(int indx);
     void triggered(int indx);
 
 private:
-
     enum {MAXITEMS = 16};
     QList<EPushButton*> cellsP;
     QList<ImagePushButton*> cellsI;
@@ -136,7 +131,6 @@ private:
     QString thisImage;
     int borderSize;
     EPushButton::ScaleMode thisScaleMode;
-    int alpha;
 };
 
 #endif

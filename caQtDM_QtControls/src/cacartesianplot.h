@@ -33,6 +33,9 @@
 #include <qwt_scale_widget.h>
 #include <qwt_plot_marker.h>
 #include <qwt_scale_engine.h>
+#include <qwt_date_scale_engine.h>
+#include <qwt_date_scale_draw.h>
+#include <qwt_legend.h>
 #include <QMouseEvent>
 #include <QVarLengthArray>
 #include <qtcontrols_global.h>
@@ -141,8 +144,10 @@ class QTCON_EXPORT caCartesianPlot : public QwtPlot
 
     Q_PROPERTY(bool XaxisEnabled READ getXaxisEnabled WRITE setXaxisEnabled)
     Q_PROPERTY(bool YaxisEnabled READ getYaxisEnabled WRITE setYaxisEnabled)
+    Q_PROPERTY(bool LegendEnabled READ getLegendEnabled WRITE setLegendEnabled)
 
     Q_PROPERTY(axisType XaxisType READ getXaxisType WRITE setXaxisType)
+    Q_PROPERTY(int numberOfXticks READ getXticks WRITE setXticks)
     Q_PROPERTY(axisType YAxisType READ getYaxisType WRITE setYaxisType)
 
     Q_PROPERTY(int XaxisSyncGroup READ getXaxisSyncGroup WRITE setXaxisSyncGroup)
@@ -151,7 +156,6 @@ class QTCON_EXPORT caCartesianPlot : public QwtPlot
     Q_PROPERTY(QString styleSheet READ styleSheet WRITE noStyle DESIGNABLE false)
 
 public:
-
 #include "caPropHandle.h"
 
      void noStyle(QString style) {Q_UNUSED(style);}
@@ -160,6 +164,10 @@ public:
     void setXaxisEnabled(bool thisXshow);
     bool getYaxisEnabled() const { return thisYshow; }
     void setYaxisEnabled(bool thisYshow);
+    bool getLegendEnabled() const { return thisLegendshow; }
+    void setLegendEnabled(bool show) {thisLegendshow = show;}
+
+    enum LegendAtttribute { COLOR, FONT, TEXT};
 
     enum {curveCount = 6};
 
@@ -193,7 +201,7 @@ public:
       FatDots
     };
 
-    enum axisType { linear=0, log10};
+    enum axisType { linear=0, log10, time};
 
     enum plMode {
         PlotNPointsAndStop = 0,
@@ -351,6 +359,9 @@ public:
     axisType getYaxisType() const {return thisYtype;}
     void setYaxisType(axisType s);
 
+    void setXticks( int nb ) {if(nb < 1) thisXticks = 1; else thisXticks = nb; setXaxisType(thisXtype);}
+    int getXticks() {return thisXticks;}
+
     void setXaxisSyncGroup( int group ) {thisXaxisSyncGroup = group;}
     int getXaxisSyncGroup() {return thisXaxisSyncGroup;}
 
@@ -363,6 +374,7 @@ public:
     void setData(float *vector, int size, int curvIndex, int curvType, int curvXY);
     void setData(int16_t *vector, int size, int curvIndex, int curvType, int curvXY);
     void setData(int32_t* vector, int size, int curvIndex, int curvType, int curvXY);
+    void setData(int8_t* vector, int size, int curvIndex, int curvType, int curvXY);
     void displayData(int curvIndex, int curvType);
 
     void setScaleX(double minX, double maxX);
@@ -375,6 +387,7 @@ public:
     void erasePlots();
     void setWhiteColors();
     void setAllProperties();
+    void updateLegendsPV();
 
     void setSymbol(curvSymbol s, int indx);
     curvSymbol getSymbol(int indx) const {return thisSymbol[indx];}
@@ -386,12 +399,18 @@ public:
     curvStyle getStyle(int indx) const {return thisStyle[indx];}
 
     QString getPV(int indx) const {return thisPV[indx].join(";");}
-    void setPV(QString const &newPV, int indx)  {thisPV[indx] = newPV.split(";");}
+    void setPV(QString const &newPV, int indx)  {if(newPV.size() > 0) thisPV[indx] = newPV.split(";"); else thisPV[indx]=QStringList();}
 
     void resetZoom();
 
-signals:
+    void setLegendAttribute(QColor c, QFont f, LegendAtttribute sw);
 
+public slots:
+    void animation(QRect p) {
+#include "animationcode.h"
+    }
+
+signals:
     void ShowContextMenu(const QPoint&);
 
 protected:
@@ -399,10 +418,8 @@ protected:
     void resizeEvent ( QResizeEvent * event);
 
 private:
-
     template <typename pureData>
     void fillData(pureData *array, int size, int curvIndex, int curvType, int curvXY);
-
     void AverageData(double *array, double *avg, int size, int ratio);
 
     QString thisTitle, thisTitleX, thisTitleY, thisTriggerPV, thisCountPV, thisErasePV;
@@ -422,16 +439,11 @@ private:
     axisScaling thisXscaling, thisYscaling;
     axisType thisXtype, thisYtype;
 
-    //double AxisLowX;
-    //double AxisUpX;
-    //double AxisLowY;
-    //double AxisUp;
-
     QwtPlotCurve curve[curveCount];
 
     QVarLengthArray<double> X[curveCount], XSAVE[curveCount];
     QVarLengthArray<double> Y[curveCount], YSAVE[curveCount];
-    QVarLengthArray<double> XAUX, YAUX;
+    QVarLengthArray<double> XAUX[curveCount], YAUX[curveCount];
 
     QVarLengthArray<double> accumulX[curveCount];
     QVarLengthArray<double> accumulY[curveCount];
@@ -439,9 +451,7 @@ private:
     QwtPlotGrid *plotGrid;
     QPen penGrid;
 
-    //int savedSize;
-
-    bool thisXshow, thisYshow, thisToBeTriggered;
+    bool thisXshow, thisYshow, thisToBeTriggered, thisLegendshow;
 
     void setBackgroundColor(QColor c);
     void setForegroundColor(QColor c);
@@ -455,6 +465,10 @@ private:
     bool thisTriggerNow;
 
     int thisXaxisSyncGroup;
+
+    QwtLegend *lgd;
+
+    int thisXticks;
 
 };
 

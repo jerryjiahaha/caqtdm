@@ -26,7 +26,7 @@ contains(QT_VER_MAJ, 5) {
       }
 }
 
-CONFIG += warn_on debug
+CONFIG += warn_on
 CONFIG += console
 
 TARGET = qtcontrols
@@ -121,7 +121,9 @@ SOURCES	+= \
     src/calabelvertical.cpp \
     src/camultilinestring.cpp \
     src/camimedisplay.cpp \
-    src/calinedemo.cpp
+    src/calinedraw.cpp \
+    src/wmsignalpropagator.cpp \
+    src/replacemacro.cpp
 
 XDR_HACK {
     SOURCES += src/xdr_hack.c
@@ -136,7 +138,10 @@ XDR_HACK {
 }
 
 QT += network
-HEADERS += src/networkaccess.h src/fileFunctions.h
+HEADERS += src/networkaccess.h src/fileFunctions.h \
+    src/calinedraw.h \
+    src/wmsignalpropagator.h \
+    src/replacemacro.h
 SOURCES += src/networkaccess.cpp src/fileFunctions.cpp
 
 
@@ -235,6 +240,7 @@ HEADERS	+= \
     src/calabelvertical.h \
     src/camimedisplay.h \
     src/caWidgetInterface.h \
-    src/calinedemo.h
+    src/addevent.h \
+    src/animationcode.h
 
 OTHER_FILES += README

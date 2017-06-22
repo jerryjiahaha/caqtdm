@@ -27,6 +27,7 @@
 #define CAGRAPHICS_H
 
 #include <QWidget>
+#include <QDebug>
 #include <qtcontrols_global.h>
 
 // would be so nice to get rid of my includes, however it would break the compatibility with former ui files, so I leave it like that
@@ -65,8 +66,7 @@ class  QTCON_EXPORT caGraphics : public QWidget
 #include "caVisibDefs.h"
 
 public:
-
-   void noStyle(QString style) {Q_UNUSED(style);}
+    void noStyle(QString style) {Q_UNUSED(style);}
 
     enum LineStyle {Solid = 0, Dash, BigDash};
     enum FillStyle {Filled = 0, Outline};
@@ -128,10 +128,21 @@ public:
     void setPropertyVisible(Properties property, bool visible);
 
 public slots:
+    void animation(QRect p) {
+#include "animationcode.h"
+    }
 
+public slots:
+    void slotTiltAngle(int);
+    void slotTiltAngle(double);
+    void slotStartAngle(int);
+    void slotStartAngle(double);
+    void slotSpanAngle(int);
+    void slotSpanAngle(double);
+    void slotArraySize(int);
+    void slotArraySize(double);
 
 signals:
-
 
 protected:
 

@@ -27,6 +27,7 @@
 
 #include <QObject>
 #include <QThread>
+#include <QBuffer>
 #include <QMutex>
 #include <QWaitCondition>
 #include <QNetworkReply>
@@ -64,13 +65,19 @@ public:
     void setTerminate();
 
     void setMessagewindow(MessageWindow *value);
+    void ChannelVerification(QNetworkAccessManager* manager);
 
 signals:
     //void requestFinished();
     void finished();
+private slots:
+    void closeEvent();
 public slots:
-   void finishReply();
+   void finishReplyConnect();
+   void finishReplyDelete();
+   void finishVerification();
    void process();
+
 
 protected:
 
@@ -79,22 +86,40 @@ protected:
   bool terminate;
   QList<QString> streams;
   QMultiMap<QString,int> Channels;
+  QList<QString> bsreadChannels;
   QList<channelstruct> ChannelsAddPipeline;
+  QMultiMap<QString,int> ChannelsToBeApprovePipeline;
+  QMultiMap<QString,int> ChannelsApprovePipeline;
   QList<channelstruct> ChannelsRemPipeline;
-  QNetworkRequest request;
-  QNetworkReply* reply;
+  QList<QString> ConnectionDeletePipeline;
+  QStringList tobeRemoved;
+  //QEventLoop eventloop;
+  QEventLoop *loop;
+  QNetworkRequest requestChannel;
+  QNetworkRequest requestDelete;
+  QNetworkRequest requestVerification;
+  QNetworkReply* replyConnect;
+  QNetworkReply* replyVerification;
+  QNetworkReply* replydelete;
+  QBuffer buff_delete_data;
+
   QMutex ProcessLocker;
   QMutex ChannelAddPipelineLocker;
   QMutex ChannelRemPipelineLocker;
+  QMutex ConnectionDeleteLocker;
   QMutex ChannelLocker;
   QWaitCondition startReconnection;
 
   channelstruct get_AddChannel();
   channelstruct get_RemChannel();
+  void deleteStream(QString *value);
+  QString get_DeleteConnection();
   void * zmqcontex;
   MutexKnobData *mutexknobdataP;
   QList<bsread_Decode*> bsreadconnections;
   QList<QThread*> bsreadThreads;
+
+
 };
 
 

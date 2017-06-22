@@ -1,9 +1,30 @@
-CAQTDM_VERSION = V4.1.0
+CAQTDM_VERSION = V4.1.6
+
+
+
+exists(../.git) {
+  GIT_VERSION = $$system(git --version)
+  contains(GIT_VERSION, "git") :{
+	  CAQTDM_GIT_VERSION = $$system(git rev-parse --abbrev-ref HEAD)
+	  CAQTDM_GIT_COMMAND = $$sprintf("git rev-parse --short=8 origin/%1", $$CAQTDM_GIT_VERSION)
+	  CAQTDM_GIT_HASH = $$system($$CAQTDM_GIT_COMMAND)
+
+	  contains(CAQTDM_GIT_VERSION, "Development") {
+	     CAQTDM_VERSION = $$sprintf("%1_%2_%3", $$CAQTDM_VERSION, $$CAQTDM_GIT_VERSION, $$CAQTDM_GIT_HASH)
+	  }
+	  #message("$$CAQTDM_GIT_VERSION")
+	  #message("$$CAQTDM_GIT_COMMAND")
+	  #message("$$CAQTDM_GIT_HASH")
+   }
+}
+
+#message($$CAQTDM_VERSION)
 
 QT_VERSION = $$[QT_VERSION]
 QT_VERSION = $$split(QT_VERSION, ".")
 QT_VER_MAJ = $$member(QT_VERSION, 0)
 QT_VER_MIN = $$member(QT_VERSION, 1)
+QT_VER_PAT = $$member(QT_VERSION, 2)
 
 TARGET_COMPANY = "Paul Scherrer Institut"
 TARGET_DESCRIPTION = "Channel Access Qt Display Manager"
@@ -17,21 +38,30 @@ contains(QT_VER_MAJ, 5) {
 #     DEFINES += QWT_USE_OPENGL
 }
 
-
 unix {
     QMAKE_CXXFLAGS += "-g"
     QMAKE_CFLAGS_RELEASE += "-g"
 }
 
-# when the designer in 4.8.2 is patched in order to display tooltip description or
-# when the qt version is higher then 5.5.0 then compile the plugins with description texts
-# be carefull with this, while when the designer does not recognize tooltip description, the widgets will not be shown
-#DEFINES += DESIGNER_TOOLTIP_DESCRIPTIONS
+# at psi the designer in 4.8.2 is patched in order to display tooltip description (not a nice test, but for now ok)
+# when the qt version is higher then 5.5.0 then we can also compile the plugins with description texts
+# be carefull with this, while when the designer does not recognize tooltip descriptions, the widgets will not be shown
+
+contains(QT_VER_MAJ, 4) {
+    contains(QT_VER_MIN, 8) {
+       contains(QT_VER_PAT, 2) {
+          message("caQtDM building with Qt4.8.2, therefore enabling designer tooltip description, this works only for the patched version of Qt4.8.2 at PSI")
+          DEFINES += DESIGNER_TOOLTIP_DESCRIPTIONS
+       }
+    }
+}
+
 contains(QT_VER_MAJ, 5) {
   greaterThan(QT_MINOR_VERSION, 5) {
     DEFINES += DESIGNER_TOOLTIP_DESCRIPTIONS 
   }
 }
+
 contains(DEFINES, DESIGNER_TOOLTIP_DESCRIPTIONS ) {
   message("Building with tooltip descriptions; if not supported by designer, turn it off in qtdefs.pri")
 }
@@ -56,10 +86,85 @@ CONFIG += XDR_HACK
 }
 
 # undefine this for epics4 plugin support (only preliminary version as example)
-#CONFIG += epics4
+# one can specify channel access with ca:// and pv access with pvs:// (both use the epics4 plugin)
+# the main work for this plugin was done by Marty Kraimer
+
+exists($(EPICS4LOCATION)/pvAccessCPP/include/pv/pvAccess.h) {
+!MOBILE {
+   message( "Configuring build for epics4" )
+   CONFIG += epics4
+}
+   CONFIG += EPICS4_STATICBUILD
+}
+
+# undefine this to make the ca provider from pvAccess (epics4) the default provider
+# otherwise the ca provider from epics3 base is the default provider
+#DEFINES += PVAISDEFAULTPROVIDER
 
 # undefine this for bsread (zeromq) plugin support
-#CONFIG += bsread
+# the main work for this plugin was done by Helge Brands
+contains(QT_VER_MAJ, 4) {
+    contains(QT_VER_MIN, 6) {
+       message( "version 4.6 of Qt" )
+       CONFIG += OLDQT
+    }
+}
+
+# undefine this for bsread (zeromq) plugin support
+# the main work for this plugin was done by Helge Brands
+# will not be build for older version of Qt
+!OLDQT {
+  exists($(ZMQINC)/zmq.h) {
+    !MOBILE {
+       message( "Configuring controlsystem plugin for bsread" )
+       CONFIG += bsread
+    }
+  }
+}
+
+#message("$$PWD")
+
+# undefine this for archive retrieval plugin support (these plugins are only valid at psi)
+# take a look at the archiveSF in order to do something similar
+CONFIG += archive
+archive: {
+# html retrieval, can always be build
+   CONFIG += archiveSF
+# next ones are only buildable at psi
+
+   X64 = $$find($$(QMAKESPEC), 64)
+   isEmpty(X64) {
+       exists(../../Libs/libNewLogRPC.a) {
+          message( "Configuring archive plugin build for logging (32)" )
+          CONFIG += archiveHIPA
+          CONFIG += archivePRO
+       }
+       exists(../caQtDM_Lib/caQtDM_Plugins/archive/archiveCA/Storage/libStorage_32.a) {
+          message( "Configuring archive plugin for CA (32)" )
+          CONFIG += archiveCA
+       }
+    } else {
+       exists(../../Libs/libNewLogRPC_64.a) {
+           message( "Configuring archive plugin for logging (64)" )
+          CONFIG += archiveHIPA
+          CONFIG += archivePRO
+       }
+       exists(../caQtDM_Lib/caQtDM_Plugins/archive/archiveCA/Storage/libStorage_64.a) {
+          message( "Configuring archive pluging for CA (64)" )
+          CONFIG += archiveCA
+       }
+    }
+}
+
+# in fileopenwindow we need to import these plugins for ios and android, so define them
+ios | android {
+bsread: { DEFINES += BSREAD }
+epics4: { DEFINES += EPICS4 }
+archiveSF: { DEFINES += ARCHIVESF }
+archiveHIPA: { DEFINES += ARCHIVEHIPA }
+archivePRO: { DEFINES += ARCHIVEPRO }
+archiveCA: { DEFINES += ARCHIVECA }
+}
 
 # undefine this when you need to combine caQtDM with the australian epicsqt package
 #CONFIG += australian
@@ -87,8 +192,78 @@ DEFINES += TARGET_COPYRIGHT=\"\\\"$${TARGET_COPYRIGHT}\\\"\"
 DEFINES += TARGET_INTERNALNAME=\"\\\"$${TARGET_INTERNALNAME}\\\"\"
 DEFINES += TARGET_VERSION_STR=\"\\\"$${CAQTDM_VERSION}\\\"\"
 
+# 4.1.6
+# x scale of cartseain plot can now also be used with a time scale (milliseconds from epoch)
+# for visibilitycalc, when no channels specified, static calculation will be done at startup
+# cacalc can now also be a vector (waveform) where the items can come from channels
+# added check for when git not present
+# added an environment variable CAQTD_TIMEOUT_HOURS to be used to quit caQtDM automatically, mouse event will reset the timeout.
+# it is now possible to use caCalc as a vector (waveform) by specifying associated pv's. the soft variable can then be used to display a waveform
+
+# 4.1.5 of 8.4.2017
+# possibility to add a frame around a caInclude
+# in case of epics 3.15 added DBE_PROPERTY
+# modified caQtDM.pri for macos
+# modified caLineEdit and caLineDraw for displaying long long instead of long when double to integer representation
+
+# 4.1.5 of 5.4.2017
+# caled circle will stay a circle when resizing with another aspect ration; border color can be customized
+# add vumeter simulation to caThermo
+
+# 4.1.5 of 23.3.17
+# calineargauge made correct size when no scale (in order to make all sizes the same)
+# for caRelatedDisplay one can now set the position for the called window
+# for caThermo a problem solved in case of alarm colors (not always refreshed with right color) and transparency added for background
+# for caThermo offset of 4 pixels modified in case of noscale
+
+# 4.1.5 of 15.3.17
+# added horizontal and vertical spacing properties to caInclude
+# added possibility to modify position and size of a control object by the function %QRect in caCalc using 1 to 4 channels
+# loading of files through internet now also over https
+# again compatible with Qt4.6
+# cachoice bug when using bit offset corrected
+# legend added to cacartesianplot
+# calineargauge and cacirculargauge modifier in indor to be smaller and changed font algorithme.
+# added possibility to have another http address for archiveSF
+# added test to indicate that waveforms are not supported by the archive plugins.
+
+# 4.1.5
+# archive plugins added
+# epics4 plugin finalized for normative types, thanks to Marty Kraimer
+# window management widget implemented (close window, ...)
+# careplacemacro widget implemented; allows to redefine macros during runtime
+# utilities designer plugin added for widgets not directly related to the control system
+# X/Y waveforms implemented in camera view
+# bsread plugin developed by Helge Brands finalized
+
+# 4.1.3
+# added for the cartesianplot resize of the fatdots plot
+# softpv treatment was slowing done caQtDM and is corrected now
+# camera has been more optimized for 16bit waveforms (the other types not yet, due to a lack of waveforms types)
+# label and vertical label can gave a border now
+# caChoice has now the possibility to display a row from the bottom to the top (rowInverse) and is optimized
+# soft pv's without a name were not working, now automatically a name is generated
+# in order to have cacalc's working correctly in includes, a macro can be used in order to individialize them
+# zero values in cartesian plot are now replaced by the lowest non-zero value when logarithmic scale is used
+# for infinite values, cartseian plot was taken unlimited resources for display, this should be corrected nw
+# slots are added to cagraphics for animation of these objects (tilt angle, span angle, arc, .. can be set now through signals
+# caCamera will now zoom by default on the middle of the image and otherwise around the last clicked point
+# autorepeat on canumeric has been take out on request of the users
+# default timing of the timed update loop has now a lower internal rate, may still be changed by a json string
+# .ftvl field of epics is now used to distingues signed anand unsigned display in cawavetable
+# in pep file you may add now the keyword -minwidth to an item in order to define the minimum width of it (default value=100).
+#      you can steer column width like that. also -comsize has been added for the comment to steer the fontsize.
+# cachoice has been slightly modified in order to grow instead of shrink (for pep files this was an issue)
+# searching of a pv for the infobox would find the pv independently of the associated plugin, giving therefore confusion
+
+# 4.1.2
+# caLineDemo has been renamed in caLineDraw and is now able to draw vertically
+# cawavetable takes now information from channel.FTVL into account in order to define signed or unsigned data
+# added CTRL+C to camultinestring for copying to clipboard
+
 # 4.1.0
-# caslider and cathermo can now display also a value; caslider got also the possibility to set distinctly the lower and upper limit
+# small change for pep files (-comsize and -minwidth), cachoice colors now also configurable through stylesheet
+# caslider and cathermo can now display also a value; caslider got also the possibility to set distinctly the lower and upper limit (Josh Dassigner from Argonne)
 # caQtDM will now display mu and grad on all platforms
 # adapted cathermo and caslider so that it can take ito account a default style with fore and background colors; now Alarm is modified in Alarm_Default or Alarm_static
 # now a widget can be added (see caLineDemo) without having to change caQtDM_lib. An interface has been defined in order to perform the datacuisition inside the widget class.

@@ -39,6 +39,7 @@ class bsread_Decode : public QObject
     Q_OBJECT
 public:
     bsread_Decode(void * Context,QString ConnectionPoint);
+    bsread_Decode(void * Context,QString ConnectionPoint,QString ConnectionType);
     ~bsread_Decode();
 
     void *getZmqsocket() const;
@@ -59,6 +60,8 @@ public:
     bool bsread_DataMonitorUnConnect(knobData *kData);
     void setTerminate();
     void bsread_createConnection(int rc);
+    QString getStreamConnectionPoint() const;
+
 public slots:
     void process();
 signals:
@@ -68,6 +71,7 @@ private:
     void * context;
     void * zmqsocket;
     QString StreamConnectionPoint;
+    QString StreamConnectionType;
     bool running_decode;
     QString ConnectionPoint;
     MutexKnobData * bsread_KnobDataP;
@@ -75,7 +79,7 @@ private:
     QString MainHeader;
     long global_timestamp_epoch;
     long global_timestamp_ns;
-    long global_timestamp_ms;
+    long global_timestamp_sec;
     long global_timestamp_ns_offset;
     double pulse_id;
     QString main_htype;

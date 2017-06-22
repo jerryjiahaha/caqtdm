@@ -32,6 +32,70 @@
 #include "cacartesianplot.h"
 #include <QtCore>
 
+class PlotScaleDateEngine: public QwtDateScaleEngine
+{
+public:
+
+    PlotScaleDateEngine(const int &nb, Qt::TimeSpec time): QwtDateScaleEngine(time)
+    {
+        nbTicks = nb;
+    }
+
+    virtual QwtScaleDiv divideScale( double x1, double x2, int , int , double) const
+    {
+        QList<double> Ticks[QwtScaleDiv::NTickTypes];
+        const QwtInterval interval = QwtInterval( x1, x2 ).normalized();
+
+        if (interval.width() <= 0 ) return QwtScaleDiv();
+
+        QwtScaleDiv scaleDiv;
+
+        for (int i=0; i<nbTicks+1; i++) {
+            Ticks[QwtScaleDiv::MajorTick] << x1 + ((x2-x1)*i / nbTicks);
+        }
+
+        scaleDiv = QwtScaleDiv(interval, Ticks);
+        if ( x1 > x2 ) scaleDiv.invert();
+
+        return scaleDiv;
+    }
+
+private:
+    int nbTicks;
+};
+
+class PlotScaleEngine: public QwtLinearScaleEngine
+{
+public:
+
+    PlotScaleEngine(const int &nb): QwtLinearScaleEngine()
+    {
+        nbTicks = nb;
+    }
+
+    virtual QwtScaleDiv divideScale( double x1, double x2, int , int , double) const
+    {
+        QList<double> Ticks[QwtScaleDiv::NTickTypes];
+        const QwtInterval interval = QwtInterval( x1, x2 ).normalized();
+
+        if (interval.width() <= 0 ) return QwtScaleDiv();
+
+        QwtScaleDiv scaleDiv;
+
+        for (int i=0; i<nbTicks+1; i++) {
+            Ticks[QwtScaleDiv::MajorTick] << x1 + ((x2-x1)*i / nbTicks);
+        }
+
+        scaleDiv = QwtScaleDiv(interval, Ticks);
+        if ( x1 > x2 ) scaleDiv.invert();
+
+        return scaleDiv;
+    }
+
+private:
+    int nbTicks;
+};
+
 class MyZoomer: public QwtPlotZoomer
 {
 public:
@@ -86,10 +150,14 @@ caCartesianPlot::caCartesianPlot(QWidget *parent) : QwtPlot(parent)
            "You can pan by dragging with the middle mouse button.\n"
            "Choose reset zoom in the context menu for original scale.\n ";
 
+
+    lgd = new QwtLegend;
+
     thisToBeTriggered = false;
     thisTriggerNow = true;
     thisCountNumber = 0;
     thisXaxisSyncGroup = 0;
+    thisXticks = 5;
 
     plotGrid = new QwtPlotGrid();
     plotGrid->attach(this);
@@ -146,7 +214,9 @@ caCartesianPlot::caCartesianPlot(QWidget *parent) : QwtPlot(parent)
 
     // curves
     for(int i=0; i < curveCount; i++) {
+        thisPV[i]=QStringList();
         curve[i].setLegendAttribute(QwtPlotCurve::LegendShowLine, true);
+        curve[i].setItemAttribute(QwtPlotItem::Legend, false);
         curve[i].setStyle(QwtPlotCurve::Lines);
         curve[i].attach(this);
         curve[i].setOrientation(Qt::Vertical);
@@ -175,14 +245,15 @@ caCartesianPlot::caCartesianPlot(QWidget *parent) : QwtPlot(parent)
     setColor_5(Qt::green);
     setColor_6(Qt::magenta);
 
+    thisLegendshow = false;
     setXaxisEnabled(true);
     setYaxisEnabled(true);
     setXscaling(Auto);
     setYscaling(Auto);
     setXaxisLimits("0;1");
     setYaxisLimits("0;1");
-    setAxisFont(QwtPlot::xBottom, QFont("Arial", 9));
-    setAxisFont(QwtPlot::yLeft, QFont("Arial", 9));
+    setAxisFont(QwtPlot::xBottom, QFont("Arial", 8));
+    setAxisFont(QwtPlot::yLeft, QFont("Arial", 8));
 
     // this allows to have a transparent widget
 #if QWT_VERSION < 0x060100
@@ -200,6 +271,27 @@ caCartesianPlot::caCartesianPlot(QWidget *parent) : QwtPlot(parent)
 #endif
 
     installEventFilter(this);
+}
+
+void caCartesianPlot::updateLegendsPV() {
+    if(thisLegendshow) {
+        insertLegend(lgd, QwtPlot::BottomLegend);
+        // set color on legend texts
+        setLegendAttribute(thisScaleColor, QFont("arial",7), COLOR);
+
+        for(int index=0; index < curveCount; index++) {
+            curve[index].setItemAttribute(QwtPlotItem::Legend, false);
+            curve[index].setTitle("");
+            if(thisPV[index].size() > 0) {
+                QStringList PVL = thisPV[index];
+                if(PVL.count() == 2) {
+                    QString PVS = PVL.at(0) + " / " + PVL.at(1);
+                    curve[index].setItemAttribute(QwtPlotItem::Legend, true);
+                    curve[index].setTitle(PVS);
+                }
+            }
+        }   
+    }
 }
 
 void caCartesianPlot::resetZoom() {
@@ -295,6 +387,11 @@ void caCartesianPlot::setData(int16_t *array, int size, int curvIndex, int curvT
 }
 
 void caCartesianPlot::setData(int32_t *array, int size, int curvIndex, int curvType, int curvXY)
+{
+    fillData(array, size, curvIndex, curvType, curvXY);
+}
+
+void caCartesianPlot::setData(int8_t *array, int size, int curvIndex, int curvType, int curvXY)
 {
     fillData(array, size, curvIndex, curvType, curvXY);
 }
@@ -479,12 +576,66 @@ void caCartesianPlot::displayData(int curvIndex, int curvType)
     }
 }
 
+#define SMALLEST -1.e20
+#define BIGGEST 1.e20
+
 // this routine will prevent that we have problems with negative values when logarithmic scale
 // and will keep the values in order to switch between log and linear scale
 void caCartesianPlot::setSamplesData(int index, double *x, double *y, int size, bool saveFlag)
 {
-    // saving the data allows to switch between log and lin when no new monitor is coming
+    double lowX = BIGGEST;
+    double lowY = BIGGEST;
+    double lowX1 = BIGGEST;
+    double lowY1 = BIGGEST;
+    bool nanXpresent=false;
+    bool nanYpresent=false;
 
+    // in case of autoscaling and you have infinite values, things will go wrong
+    if(thisXscaling == Auto) {
+        for(int i=0; i< size; i++) {
+            if(x[i] < SMALLEST || x[i] > BIGGEST) {
+                setXscaling(User); setAxisScale(xBottom, -10.0, 10.0);
+                if(x[i] < SMALLEST) x[i] = SMALLEST;
+                if(x[i] > BIGGEST) x[i] = BIGGEST;
+                printf("caCartesianPlot::setSamplesData: infinite x value detected, scale set to -10 to 10\n");
+                fflush(stdout);
+                break;
+            }
+            if((x[i] < lowX) && (x[i] > 0.0)) lowX = x[i];
+            if(x[i] < lowX1) lowX1 = x[i];
+            if(qIsNaN(x[i])) nanXpresent= true;
+        }
+
+        if(lowX == BIGGEST) {
+            lowX = 1.0;
+        }
+    } else {
+        lowX = 1.e-20;
+    }
+    if(thisYscaling == Auto) {
+        for(int i=0; i< size; i++) {
+            if(y[i] < SMALLEST || y[i] > BIGGEST) {
+                setYscaling(User); setAxisScale(yLeft, -10.0, 10.0);
+                if(y[i] < SMALLEST) y[i] = SMALLEST;
+                if(y[i] > BIGGEST) y[i] = BIGGEST;
+                printf("caCartesianPlot::setSamplesData: ininite y value detected, scale set to -10 to 10\n");
+                fflush(stdout);
+                break;
+            }
+            // for logarithmic scale
+            if((y[i] < lowY) && (y[i] > 0.0)) lowY = y[i];
+            if(y[i] < lowY1) lowY1 = y[i];
+            if(qIsNaN(y[i])) nanYpresent= true;
+        }
+
+        if(lowY == BIGGEST) {
+            lowY = 1.0;
+        }
+    } else {
+        lowY = 1.e-20;
+    }
+
+    // saving the data allows to switch between log and lin when no new monitor is coming
     if(saveFlag) {
         XSAVE[index].resize(size);
         YSAVE[index].resize(size);
@@ -494,24 +645,28 @@ void caCartesianPlot::setSamplesData(int index, double *x, double *y, int size, 
 
     // use auxiliary arrays, in order not to overwrite the original data
     if((thisXtype == log10) || (thisYtype == log10)) {
-        XAUX.resize(size);
-        YAUX.resize(size);
-        memcpy(XAUX.data(), x, size*sizeof(double));
-        memcpy(YAUX.data(), y, size*sizeof(double));
+        XAUX[index].resize(size);
+        YAUX[index].resize(size);
+        memcpy(XAUX[index].data(), x, size*sizeof(double));
+        memcpy(YAUX[index].data(), y, size*sizeof(double));
 
         if(thisXtype == log10) {
             for(int i=0; i< size; i++) {
-                if(x[i] < 1.e-20) XAUX[i] = 1.e-20;
+                if(x[i] <= lowX)  XAUX[index][i] = lowX;
+                if(qIsNaN(x[i]))  XAUX[index][i] = lowX;
             }
         }
         if(thisYtype == log10) {
             for(int i=0; i< size; i++) {
-                if(y[i] < 1.e-20) YAUX[i] = 1.e-20;
+                if(y[i] < lowY)   YAUX[index][i] = lowY;
+                 if(qIsNaN(y[i])) YAUX[index][i] = lowY;
             }
         }
-        curve[index].setRawSamples(XAUX.data(), YAUX.data(), size);
+        curve[index].setRawSamples(XAUX[index].data(), YAUX[index].data(), size);
     }
     else {
+        if(nanYpresent) for(int i=0; i< size; i++) if(qIsNaN(y[i])) y[i] = lowY1;
+        if(nanXpresent) for(int i=0; i< size; i++) if(qIsNaN(x[i])) x[i] = lowX1;
         curve[index].setRawSamples(x, y, size);
     }
 }
@@ -521,7 +676,7 @@ void caCartesianPlot::setTitlePlot(QString const &titel)
     thisTitle=titel;
     if(titel.size() != 0) {
         QwtText title(titel);
-        title.setFont(QFont("Arial", 10));
+        title.setFont(QFont("Arial", 9));
         setTitle(title);
         replot();
     }
@@ -532,7 +687,7 @@ void caCartesianPlot::setTitleX(QString const &titel)
     thisTitleX=titel;
     if(titel.size() != 0) {
         QwtText xAxis(titel);
-        xAxis.setFont(QFont("Arial", 10));
+        xAxis.setFont(QFont("Arial", 9));
         setAxisTitle(xBottom, xAxis);
     }
     replot();
@@ -543,7 +698,7 @@ void caCartesianPlot::setTitleY(QString const &titel)
     thisTitleY=titel;
     if(titel.size() != 0) {
         QwtText xAxis(titel);
-        xAxis.setFont(QFont("Arial", 10));
+        xAxis.setFont(QFont("Arial", 9));
         setAxisTitle(yLeft, xAxis);
     }
     replot();
@@ -684,7 +839,8 @@ void caCartesianPlot::setColor(QColor c, int indx)
         } else if(thisStyle[indx] == Dots) {
             curve[indx].setPen(QPen(c, 0));
         } else {
-            curve[indx].setPen(QPen(c, 2));
+            int size=qMax(2, (int) qRound(this->geometry().height()/70.0));
+            curve[indx].setPen(QPen(c, size));
         }
     } else {
         curve[indx].setPen(QPen(thisScaleColor, 2));  // normally black
@@ -731,6 +887,10 @@ void caCartesianPlot::resizeEvent ( QResizeEvent * event )
     QwtPlot::resizeEvent(event);
     for(int i=0; i<6; i++) {
         setSymbol(thisSymbol[i], i);
+        if((thisStyle[i] != FillUnder) &&  (thisStyle[i] == FatDots)) {
+            int size=qMax(2, (int) qRound(this->geometry().height()/70.0));
+            curve[i].setPen(QPen(thisLineColor[i], size));
+        }
     }
 }
 
@@ -741,7 +901,7 @@ void caCartesianPlot::setSymbol(curvSymbol s, int indx)
     QwtSymbol::Style ms = myMarker(s);
     brush.setColor(thisLineColor[indx]);
     brush.setStyle(Qt::SolidPattern);
-    size=qMax(5, (int) (this->geometry().height()/70.0));
+    size=qMax(2, (int) qRound(this->geometry().height()/50.0));
     curve[indx].setSymbol(new QwtSymbol(ms, brush, QPen(thisLineColor[indx]), QSize(size, size)));
     replot();
 }
@@ -887,18 +1047,39 @@ void caCartesianPlot::setScaleY(double minY, double maxY)
     replot();
 }
 
-
 void caCartesianPlot::setXaxisType(axisType s)
 {
     thisXtype = s;
-    if(s == log10) {
+    if(s == time) {
+        // gives an axe for milliseconds since epoch
+        PlotScaleDateEngine *scaleEngine = new PlotScaleDateEngine(thisXticks, Qt::LocalTime); // in number of milliseconds from epoch
+        setAxisScaleEngine(QwtPlot::xBottom, scaleEngine);
+
+        QwtDateScaleDraw * scaleDraw = new QwtDateScaleDraw();
+        scaleDraw->setDateFormat(QwtDate::Millisecond, QString("hh:mm:ss\ndd-MM-yy"));
+        scaleDraw->setDateFormat(QwtDate::Second, QString("hh:mm:ss\ndd-MM-yy"));
+        scaleDraw->setDateFormat(QwtDate::Minute, QString("hh:mm:ss\ndd-MM-yy"));
+        scaleDraw->setDateFormat(QwtDate::Hour, QString("hh:mm:ss\ndd-MM-yy"));
+        scaleDraw->setDateFormat(QwtDate::Day, QString("hh:mm:ss\ndd-MM-yy"));
+        scaleDraw->setDateFormat(QwtDate::Week, QString("hh:mm:ss\ndd-MM-yy"));
+        scaleDraw->setDateFormat(QwtDate::Month, QString("hh:mm:ss\ndd-MM-yy"));
+        scaleDraw->setDateFormat(QwtDate::Year, QString("hh:mm:ss\ndd-MM-yy"));
+        setAxisScaleDraw(QwtPlot::xBottom, scaleDraw);
+        double INTERVAL = 3600 * 1000;
+        setAxisScale(QwtPlot::xBottom, 0.0, INTERVAL, INTERVAL/thisXticks);
+
+    } else if(s == log10) {
 #if QWT_VERSION < 0x060100
         setAxisScaleEngine(QwtPlot::xBottom, new QwtLog10ScaleEngine);
 #else
         setAxisScaleEngine(QwtPlot::xBottom, new QwtLogScaleEngine);
 #endif
+        setAxisScaleDraw(QwtPlot::xBottom, new QwtScaleDraw());
     } else {
-        setAxisScaleEngine(QwtPlot::xBottom, new QwtLinearScaleEngine);
+        setAxisScaleEngine(QwtPlot::xBottom, new PlotScaleEngine(thisXticks));
+        setAxisScaleDraw(QwtPlot::xBottom, new QwtScaleDraw());
+        double INTERVAL = 1000.0;
+        setAxisScale(QwtPlot::xBottom, 0.0, INTERVAL, INTERVAL/thisXticks);
     }
 
     setXaxisLimits(getXaxisLimits());
@@ -912,7 +1093,10 @@ void caCartesianPlot::setXaxisType(axisType s)
 void caCartesianPlot::setYaxisType(axisType s)
 {
     thisYtype = s;
-    if(s == log10) {
+    if(s == time) {  // not supported
+        thisYtype = linear;
+        setAxisScaleEngine(QwtPlot::yLeft, new QwtLinearScaleEngine);
+    } else if(s == log10) {
 #if QWT_VERSION < 0x060100
         setAxisScaleEngine(QwtPlot::yLeft, new QwtLog10ScaleEngine);
 #else
@@ -968,6 +1152,106 @@ bool caCartesianPlot::eventFilter(QObject *obj, QEvent *event)
         }
     }
     return QObject::eventFilter(obj, event);
+}
+
+void caCartesianPlot::setLegendAttribute(QColor c, QFont f, LegendAtttribute SW)
+{
+    int i;
+
+    //printf("fontsize=%.1f %s\n", f.pointSizeF(), qasc(this->objectName()));
+    //when legend text gets to small, hide it (will give then space for plot)
+
+
+#if QWT_VERSION < 0x060100
+    for(i=0; i < curveCount; i++) {
+
+        if(f.pointSizeF() <= 4.0) {
+            curve[i].setItemAttribute(QwtPlotItem::Legend, false);
+            continue;
+        } else {
+            curve[i].setItemAttribute(QwtPlotItem::Legend, true);
+        }
+
+        switch (SW) {
+        case TEXT:
+            // done now through curve title
+            break;
+
+        case FONT:
+            if(getLegendEnabled()) {
+                if(legend() != (QwtLegend*) 0) {
+                    QList<QWidget *> list =  legend()->legendItems();
+                    for (QList<QWidget*>::iterator it = list.begin(); it != list.end(); ++it ) {
+                        QWidget *w = *it;
+                        w->setFont(f);
+                    }
+                }
+            }
+            break;
+
+        case COLOR:
+            if(legend() != (QwtLegend*) 0) {
+                QList<QWidget *> list =  legend()->legendItems();
+                for (QList<QWidget*>::iterator it = list.begin(); it != list.end(); ++it ) {
+                    QWidget *w = *it;
+                    QPalette palette = w->palette();
+                    palette.setColor( QPalette::WindowText, c); // for ticks
+                    palette.setColor( QPalette::Text, c);       // for ticks' labels
+                    w->setPalette (palette);
+                    w->setFont(f);
+                }
+            }
+            break;
+        }
+
+    }
+#else
+
+    i=0;
+    foreach (QwtPlotItem *plt_item, itemList()) {
+        if (plt_item->rtti() == QwtPlotItem::Rtti_PlotCurve) {
+
+            QwtPlotCurve *curve = static_cast<QwtPlotCurve *>(plt_item);
+
+            if(f.pointSizeF() <= 4.0) {
+                curve->setItemAttribute(QwtPlotItem::Legend, false);
+                continue;
+            } else if(!curve->title().isEmpty()) {
+                curve->setItemAttribute(QwtPlotItem::Legend, true);
+            }
+
+            QwtLegend *lgd = qobject_cast<QwtLegend *>(legend());
+            if (lgd != (QwtLegend *) 0){
+                QList<QWidget *> legendWidgets = lgd->legendWidgets(itemToInfo(plt_item));
+                if (legendWidgets.size() == 1) {
+                    QwtLegendLabel *b = qobject_cast<QwtLegendLabel *>(legendWidgets[0]);
+                    switch (SW) {
+
+                    case TEXT:
+                        // done now through curve title
+                        break;
+
+                    case FONT:
+                        b->setFont(f);
+                        b->update();
+                        break;
+
+                    case COLOR:
+                        QPalette palette = b->palette();
+                        palette.setColor(QPalette::WindowText, c); // for ticks
+                        palette.setColor(QPalette::Text, c);       // for ticks' labels
+                        b->setPalette(palette);
+                        b->update();
+                        break;
+
+                    }
+                }
+            }
+        }
+    }
+    updateLegend();
+#endif
+
 }
 
 #include "moc_cacartesianplot.cpp"

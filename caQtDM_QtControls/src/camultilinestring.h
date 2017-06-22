@@ -80,7 +80,6 @@ class QTCON_EXPORT caMultiLineString : public QPlainTextEdit, public FontScaling
     Q_OBJECT
 
 public:
-
     void noStyle(QString style) {Q_UNUSED(style);}
 
     enum Shape {NoFrame = 0};
@@ -135,8 +134,14 @@ public:
     void updateAlarmColors();
     void setColors(QColor bg, QColor fg, QColor fr, int lineWidth);
 
+public slots:
+    void animation(QRect p) {
+#include "animationcode.h"
+    }
+
 private slots:
     void rescaleFont(const QString& newText);
+    void copy();
 
 protected:
       virtual bool event(QEvent *);

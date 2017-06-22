@@ -54,6 +54,7 @@
 #include <qwt_plot_marker.h>
 #include <QMouseEvent>
 #include <qtcontrols_global.h>
+#include <qnumeric.h>
 
 #include <stripplotthread.h>
 
@@ -180,7 +181,6 @@ class QTCON_EXPORT caStripPlot : public QwtPlot
     Q_PROPERTY(QString styleSheet READ styleSheet WRITE noStyle DESIGNABLE false)
 
 public:
-
 #include "caPropHandle.h"
 
     void noStyle(QString style) {Q_UNUSED(style);}
@@ -440,6 +440,11 @@ public:
 
     void setTicksResizeFactor(float factX, float factY);
 
+public slots:
+    void animation(QRect p) {
+#include "animationcode.h"
+    }
+
 protected:
     void resizeEvent ( QResizeEvent * event);
 
@@ -453,7 +458,6 @@ private slots:
      void TimeOutThread();
 
 private:
-
     int HISTORY;
     int timerID;
     double INTERVAL;

@@ -77,6 +77,9 @@ QPolygonF ImageWidget::getHead( QPointF p1, QPointF p2, int arrowSize ) {
     return arrowHead;
 }
 
+#define SMALLEST -1.e20
+#define BIGGEST 1.e20
+
 void ImageWidget::paintEvent(QPaintEvent * event)
 {
     int xnew, ynew, width , height;
@@ -84,9 +87,11 @@ void ImageWidget::paintEvent(QPaintEvent * event)
     QPointF p1, p2;
     QRect selectionRect;
     bool present[4];
+    double deltax, deltay;
 
     Q_UNUSED(event);
     QPainter painter(this);
+
     painter.save();
 
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
@@ -127,7 +132,62 @@ void ImageWidget::paintEvent(QPaintEvent * event)
     height = imageNew.size().height();
     painter.setPen(Qt::blue);
     painter.drawRoundedRect(0, 0, width, height, 2.0, 2.0);
-    //painter.drawRect(0, 0, width, height);
+
+    if(XL.size() > 0) {
+        pointsX.resize(XL.size());
+        float Max[2];
+        float Min[2];
+        Max[1] = (float) SMALLEST;
+        Min[1] = (float) BIGGEST;
+
+        // get max and min from waveform
+        for(int i=qMax(exposedRect.y(), 0); i< qMin(XL.size(),exposedRect.height() + exposedRect.y()) ; ++i) {
+             Max[(XL[i] > Max[1])] =  (float) XL[i];
+             Min[(XL[i] < Min[1])] =  (float) XL[i];
+         }
+        //printf("%d %d %d %d\n", exposedRect.x(), exposedRect.y(), exposedRect.width(), exposedRect.height());
+
+        // calculate world values to positions
+        painter.setCompositionMode(QPainter::RasterOp_SourceAndNotDestination);
+        painter.setPen(QPen(Qt::white, 0, Qt::SolidLine));
+        double range = Max[1] - Min[1];
+        double correction = qAbs(exposedRect.height() * 0.2 / range);
+
+        //printf("%d %d %d %d\n", exposedRect.x(), exposedRect.y(), exposedRect.width(), exposedRect.height());
+
+        for(int i=0; i< XL.size(); i++) {
+            pointsX[i].setY(i);
+            pointsX[i].setX((XL[i] - Min[1]) * correction + exposedRect.x());
+        }
+        painter.drawPolyline(pointsX.data(), XL.size());
+    }
+
+    if(YL.size() > 0) {
+        pointsY.resize(YL.size());
+        float Max[2];
+        float Min[2];
+        Max[1] = SMALLEST;
+        Min[1] = BIGGEST;
+
+        // get max and min from waveform
+        for(int i=qMax(exposedRect.x(), 0); i< qMin(YL.size(),exposedRect.width() + exposedRect.x()) ; ++i) {
+             Max[(YL[i] > Max[1])] =  (float) YL[i];
+             Min[(YL[i] < Min[1])] =  (float) YL[i];
+         }
+        //printf("%d %d %d %d\n", exposedRect.x(), exposedRect.y(), exposedRect.width(), exposedRect.height());
+
+        // calculate world values to positions
+        painter.setCompositionMode(QPainter::RasterOp_SourceAndNotDestination);
+        painter.setPen(QPen(Qt::white, 0, Qt::SolidLine));
+        double range = Max[1] - Min[1];
+        double correction = qAbs(exposedRect.width() * 0.2 / range);
+
+        for(int i=0; i< YL.size(); i++) {
+            pointsY[i].setX(i);
+            pointsY[i].setY((YL[i] -  Min[1]) * correction + exposedRect.y());
+        }
+        painter.drawPolyline(pointsY.data(), YL.size());
+    }
 
     painter.restore();
 
@@ -191,10 +251,29 @@ void ImageWidget::paintEvent(QPaintEvent * event)
                 values[3] = selectionPointsL[1].y();
                 break;
             case xyUpleft_xyLowright:
-                values[0] = selectionRect.topLeft().x();
-                values[1] = selectionRect.topLeft().y();
-                values[2] = selectionRect.bottomRight().x();
-                values[3] = selectionRect.bottomRight().y();
+                deltax = -(selectionRect.topLeft().x() - selectionRect.bottomRight().x());
+                deltay = -(selectionRect.topLeft().y() - selectionRect.bottomRight().y());
+                if(deltax < 0 && deltay > 0) {
+                    values[0] = selectionRect.bottomRight().x();
+                    values[1] = selectionRect.topLeft().y();
+                    values[2] = selectionRect.topLeft().x();
+                    values[3] = selectionRect.bottomRight().y();
+                } else if(deltax < 0 && deltay < 0) {
+                    values[0] = selectionRect.bottomRight().x();
+                    values[1] = selectionRect.bottomRight().y();
+                    values[2] = selectionRect.topLeft().x();
+                    values[3] = selectionRect.topLeft().y();
+                } else if(deltax > 0 && deltay < 0) {
+                    values[0] = selectionRect.topLeft().x();
+                    values[1] = selectionRect.bottomRight().y();
+                    values[2] = selectionRect.bottomRight().x();
+                    values[3] = selectionRect.topLeft().y();
+                } else if(deltax > 0 && deltay > 0) {
+                    values[0] = selectionRect.topLeft().x();
+                    values[1] = selectionRect.topLeft().y();
+                    values[2] = selectionRect.bottomRight().x();
+                    values[3] = selectionRect.bottomRight().y();
+                }
                 break;
             case xycenter_width_height:
                 values[0] = selectionRect.center().x();
@@ -220,8 +299,8 @@ void ImageWidget::paintEvent(QPaintEvent * event)
         case xy_only:
             if(!present[0] || !present[1]) break;
             // vertical and horizontal
-            painter.drawLine(values[0], 0, values[0], qRound(this->height()*scaleFactorL));
-            painter.drawLine(0, values[1], qRound(this->width()*scaleFactorL), values[1]);
+            painter.drawLine(values[0], 0, values[0], qRound(imageNew.size().height()*scaleFactorL));
+            painter.drawLine(0, values[1], qRound(imageNew.size().width()*scaleFactorL), values[1]);
 
             switch (markerTypeL) {
             case box:
@@ -246,8 +325,8 @@ void ImageWidget::paintEvent(QPaintEvent * event)
             switch (markerTypeL) {
             case box_crosshairs:
                 // vertical and horizontal
-                painter.drawLine(xnew, 0, xnew, qRound(this->height()*scaleFactorL));
-                painter.drawLine(0, ynew, qRound(this->width()*scaleFactorL), ynew);
+                painter.drawLine(xnew, 0, xnew, qRound(imageNew.size().height()*scaleFactorL));
+                painter.drawLine(0, ynew, qRound(imageNew.size().width()*scaleFactorL), ynew);
             case box:
                 selectionRect.setCoords(values[0], values[1], values[2], values[3]);
                 painter.drawRect(selectionRect);
@@ -294,8 +373,8 @@ void ImageWidget::paintEvent(QPaintEvent * event)
             switch (markerTypeL) {
             case box_crosshairs:
                 // vertical and horizontal
-                painter.drawLine(xnew, 0, xnew, qRound(this->height()*scaleFactorL));
-                painter.drawLine(0, ynew, qRound(this->width()*scaleFactorL), ynew);
+                painter.drawLine(xnew, 0, xnew, qRound(imageNew.size().height()*scaleFactorL));
+                painter.drawLine(0, ynew, qRound(imageNew.size().width()*scaleFactorL), ynew);
             case box:
                 if(width <= 1) break;
                 if((height) <= 1) break;
@@ -334,8 +413,8 @@ void ImageWidget::paintEvent(QPaintEvent * event)
             case box_crosshairs:
                 if(!present[0] || !present[1]) break;
                 // vertical and horizontal
-                painter.drawLine(values[0], 0, values[0], qRound(this->height()*scaleFactorL));
-                painter.drawLine(0, values[1], qRound(this->width()*scaleFactorL), values[1]);
+                painter.drawLine(values[0], 0, values[0], qRound(imageNew.size().height()*scaleFactorL));
+                painter.drawLine(0, values[1], qRound(imageNew.size().width()*scaleFactorL), values[1]);
             case box:
                 if(!present[0] || !present[1] || !present[2] || !present[3]) break;
                 if((values[0] - values[2]/2) <= 1) break;
@@ -387,7 +466,8 @@ void ImageWidget::resizeEvent(QResizeEvent *e)
 }
 
 void ImageWidget::rescaleReadValues(const bool &fitToSize, const QImage &image, const double &scaleFactor,
-                                    bool readvaluesPresent[], double readvalues[] )
+                                    bool readvaluesPresent[], double readvalues[],
+                                    QVarLengthArray<double> X,  QVarLengthArray<double> Y)
 {
     double factorX = (double) this->size().width() / (double) image.size().width();
     double factorY = (double) this->size().height() /(double) image.size().height();
@@ -401,6 +481,8 @@ void ImageWidget::rescaleReadValues(const bool &fitToSize, const QImage &image, 
         }
         readValuesL[i] = qRound(georeadValues[i]);
     }
+    XL = X;
+    YL = Y;
     update();
 }
 
@@ -426,7 +508,8 @@ void ImageWidget::updateSelectionBox(QPoint selectionPoints[], const bool &selec
 
 void  ImageWidget::updateImage(bool FitToSize, const QImage &image, bool readvaluesPresent[], double readvalues[],
                                double scaleFactor, bool selectSimpleView,
-                               short readmarkerType, short readType, short writemarkerType, short writeType)
+                               short readmarkerType, short readType, short writemarkerType, short writeType,
+                               QVarLengthArray<double> X,  QVarLengthArray<double> Y)
 {
     disconnected = false;
     selectSimpleViewL = selectSimpleView;
@@ -454,8 +537,8 @@ void  ImageWidget::updateImage(bool FitToSize, const QImage &image, bool readval
         return;
     }
 
-    rescaleReadValues(FitToSize, image, scaleFactor, readvaluesPresent, readvalues);
-    update();
+    rescaleReadValues(FitToSize, image, scaleFactor, readvaluesPresent, readvalues, X, Y);
+    //update();  done already in rescalereadvalues
 }
 
 

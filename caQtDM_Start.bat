@@ -34,8 +34,8 @@ echo ===========================================================================
 
 echo ============ start caqtdm =================
 set PATH=%PATH%;%JOM%
-set PATH=%PATH%;%QTHOME%\bin
-set PATH=%PATH%;%QWTLIB%
+set PATH=%QTHOME%\bin;%PATH%
+set PATH=%QWTLIB%;%PATH%
 
 
 
@@ -59,7 +59,7 @@ GOTO:eof
 :SELECTRelease
 set QT_PLUGIN_PATH=%CAQTDM_COLLECT%\designer
 set PATH=%PATH%;%EPICS_BASE%\bin\windows-x64
-set PATH=%CAQTDM_COLLECT%;%PATH%
+set PATH=%CAQTDM_COLLECT%;%SSLLIB%;%PATH%
 set QT_QPA_PLATFORM_PLUGIN_PATH=%QTHOME%\plugins\platforms
 set "QT_QPA_PLATFORM_PLUGIN_PATH=%QT_QPA_PLATFORM_PLUGIN_PATH:/=\%"
 

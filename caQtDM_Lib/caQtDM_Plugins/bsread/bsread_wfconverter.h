@@ -75,7 +75,7 @@ public:
         timer.start();
 
 
-        if (kDataP->edata.valueCount!=bsreadPVP->bsdata.wf_data_size){
+        if ((ulong)kDataP->edata.valueCount!=bsreadPVP->bsdata.wf_data_size){
             QMutex *datamutex;
             datamutex = (QMutex*) kDataP->mutex;
             datamutex->lock();
@@ -134,7 +134,7 @@ public:
 
             }
 
-            qDebug() << "convert timer :" <<  timer.elapsed() << "milliseconds";
+            //qDebug() << "convert timer :" <<  timer.elapsed() << "milliseconds";
 
           }
       }

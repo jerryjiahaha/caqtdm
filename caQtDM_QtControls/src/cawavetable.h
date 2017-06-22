@@ -39,7 +39,6 @@ typedef char string40[40];
 
 class QTCON_EXPORT caWaveTable : public QTableWidget
 {
-
     Q_OBJECT
     Q_PROPERTY(int rowCount READ rowCount WRITE setRowCount DESIGNABLE false)
     Q_PROPERTY(int columnCount READ columnCount WRITE setColumnCount DESIGNABLE false)
@@ -67,13 +66,12 @@ class QTCON_EXPORT caWaveTable : public QTableWidget
     Q_ENUMS(FormatType)
 
 public:
-
     void noStyle(QString style) {Q_UNUSED(style);}
 
     caWaveTable(QWidget *parent);
 
     enum FormatType {decimal, exponential, compact, hexadecimal, octal, string};
-    enum DataType {doubles, longs, characters};
+    enum DataType {doubles, longs, characters, strings};
     enum Alignment {Center, Left, Right};
 
     enum SourceMode {Channel = 0, User};
@@ -92,6 +90,8 @@ public:
 
     QString getPV() const;
     void setPV(QString const &newPV);
+
+    void setDataType(QString const &datatype);
 
     void setActualPrecision(int prec);
     void displayText(int index, short status, QString const &text);
@@ -120,6 +120,11 @@ public:
                                                     if(colcount > 0 && rowcount > 0) setupItems(rowcount, colcount);
                                                   }
     Alignment getAlignment() const {return thisAlignment;}
+
+public slots:
+    void animation(QRect p) {
+#include "animationcode.h"
+    }
 
 private slots:
     void copy();
@@ -150,6 +155,7 @@ private:
     char thisFormat[20];
     char thisFormatC[20];
     FormatType thisFormatType;
+    bool thisUnsigned;
     Alignment thisAlignment;
     int thisPrecision;
     SourceMode thisPrecMode;
@@ -158,6 +164,11 @@ private:
     QAction *copyAct;
 
     QVector<QString> keepText;
+    QVector<double> keepData;
+    DataType keepDatatype;
+    int keepDatasize;
+    short keepStatus;
+
     int blockIndex;
 
     int colcount;

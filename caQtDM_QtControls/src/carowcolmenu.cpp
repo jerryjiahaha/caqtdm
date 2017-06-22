@@ -34,19 +34,19 @@ caRowColMenu::caRowColMenu(QWidget *parent) : QWidget(parent)
 {
     // to start with, clear the stylesheet, so that playing around
     // is not possible.
+
     setStyleSheet("");
 
     numCells = 2;
-    files << "1" << "2" << "3" << "4" << "5" << "6" << "7" << "8" << "9" << "10" << "11" << "12" << "13" << "14" << "15" << "16";
-    args  << "1" << "2" << "3" << "4" << "5" << "6" << "7" << "8" << "9" << "10" << "11" << "12" << "13" << "14" << "15" << "16";
-    labels<< "1" << "2" << "3" << "4" << "5" << "6" << "7" << "8" << "9" << "10" << "11" << "12" << "13" << "14" << "15" << "16";
+    labels << "1" << "2";
+    files << "1" << "2";
+    args  << "1" << "2";
 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     grid = new QGridLayout(this);
     grid->setMargin(0);
     grid->setSpacing(2);
 
-    thisStacking = Row;
     thisForeColor = Qt::black;
 
     thisBackColor = Qt::gray;
@@ -60,7 +60,7 @@ caRowColMenu::caRowColMenu(QWidget *parent) : QWidget(parent)
     cellsI.clear();
     signalMapper = new QSignalMapper(this);
     for (int i = 0; i < 16; i++) {
-        EPushButton* temp =  new EPushButton(labels[i], this);
+        EPushButton* temp =  new EPushButton(QString::number(i), this);
         temp->setFontScaleMode(thisScaleMode);
         temp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         temp->setMinimumSize(2,2); //important for resizing as small as possible
@@ -70,20 +70,13 @@ caRowColMenu::caRowColMenu(QWidget *parent) : QWidget(parent)
 
     connect(signalMapper, SIGNAL(mapped(int)),this, SIGNAL(clicked(int)));
 
-    populateCells();
-
-    alpha = 255;
+    setStacking(Row);
 
     installEventFilter(this);
 }
 
 void caRowColMenu::populateCells()
 {
-    double dSqrt = ceil(sqrt((double) numCells)); // preferentially vertical orientation
-    int nbLines = qMax(2, (int) dSqrt);
-    int column = 0;
-    int row = 0;
-
     numCells = qMin(files.size(), args.size());
     numCells = qMin(numCells, labels.size());
 
@@ -91,6 +84,11 @@ void caRowColMenu::populateCells()
     if(numCells > MAXITEMS) numCells=MAXITEMS;
 
     if(thisStacking == Hidden) numCells = 1;
+
+    double dSqrt = ceil(sqrt((double) numCells)); // preferentially vertical orientation
+    int nbLines = qMax(2, (int) dSqrt);
+    int column = 0;
+    int row = 0;
 
     foreach(ImagePushButton *l, cellsI) {
         grid->removeWidget(l);
@@ -143,9 +141,7 @@ void caRowColMenu::populateCells()
             if(thisStacking == Hidden) {
                 temp->setInVisible(thisBackColor, thisForeColor, thisBorderColor);
                 borderSize = 0;
-                alpha = 0;
             } else {
-                alpha = 255;
                 borderSize = 3;
             }
 
@@ -200,13 +196,10 @@ void caRowColMenu::setStacking(Stacking stacking)
     QResizeEvent *re = new QResizeEvent(size(), size());
     resizeEvent(re);
     delete re;
-
-    populateCells();
 }
 
 void  caRowColMenu::setLabels(QString const &newL)
 {
-    if(getLabels() == newL) return;
     labels= newL.split(";");
     populateCells();
 }
@@ -238,6 +231,7 @@ void caRowColMenu::setForeground(QColor c)
 void caRowColMenu::resizeEvent(QResizeEvent *e)
 {
     Q_UNUSED(e);
+    populateCells();
 }
 
 void caRowColMenu::setFontScaleModeL(EPushButton::ScaleMode m)
@@ -341,16 +335,28 @@ void caRowColMenu::updateColors()
             ImagePushButton *temp = cellsI[0];
 
             //set colors and style filled
+
+            int alphafg = 0;
+            int alphabg = 0;
+            int alphaborder = 0;
+            int alphabghover = 0;
+            if(thisStacking != Hidden)  {
+                alphafg = thisForeColor.alpha();
+                alphabg = thisBackColor.alpha();
+                alphaborder = thisBorderColor.alpha();
+                alphabghover = thisBackColorHover.alpha();
+            }
+
             QString style = "QPushButton{ background-color: rgba(%1, %2, %3, %4); color: rgba(%5, %6, %7, %8); border-color: rgba(%9, %10, %11, %12);";
-            style = style.arg(thisBackColor.red()).arg(thisBackColor.green()).arg(thisBackColor.blue()).arg(thisBackColor.alpha()).
-                    arg(thisForeColor.red()).arg(thisForeColor.green()).arg(thisForeColor.blue()).arg(thisForeColor.alpha()).
-                    arg(thisBorderColor.red()).arg(thisBorderColor.green()).arg(thisBorderColor.blue()).arg(thisBorderColor.alpha());
+            style = style.arg(thisBackColor.red()).arg(thisBackColor.green()).arg(thisBackColor.blue()).arg(alphabg).
+                    arg(thisForeColor.red()).arg(thisForeColor.green()).arg(thisForeColor.blue()).arg(alphafg).
+                    arg(thisBorderColor.red()).arg(thisBorderColor.green()).arg(thisBorderColor.blue()).arg(alphaborder);
             QString border ="border-radius: 3px; padding: 1px; border-style: outset; border-width: %1px;}";
             border = border.arg(borderSize);
             style.append(border);
             QString hover = "QPushButton:hover {background-color: rgba(%1, %2, %3, %4);}  QPushButton:pressed {background-color: rgba(%5, %6, %7, %8)};";
-            hover = hover.arg(thisBackColorHover.red()).arg(thisBackColorHover.green()).arg(thisBackColorHover.blue()).arg(thisBackColorHover.alpha()).
-                    arg(thisBorderColor.red()).arg(thisBorderColor.green()).arg(thisBorderColor.blue()).arg(thisBorderColor.alpha());
+            hover = hover.arg(thisBackColorHover.red()).arg(thisBackColorHover.green()).arg(thisBackColorHover.blue()).arg(alphabghover).
+                    arg(thisBorderColor.red()).arg(thisBorderColor.green()).arg(thisBorderColor.blue()).arg(alphaborder);
             style.append(hover);
             if(temp->styleSheet() != style) {
                 temp->setStyleSheet(style);

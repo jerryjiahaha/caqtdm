@@ -39,7 +39,7 @@
 #include "knobData.h"
 #include "mutexKnobDataWrapper.h"
 
-
+#define DEFAULTRATE 10
 
 class CAQTDM_LIBSHARED_EXPORT MutexKnobData: public QObject {
     Q_OBJECT
@@ -74,7 +74,7 @@ public:
 
     void InsertSoftPV(QString pv, int num, QWidget* w);
     void RemoveSoftPV(QString pv, QWidget *w, int indx);
-    void UpdateSoftPV(QString pv, double value, QWidget *w);
+    void UpdateSoftPV(QString pv, double value, QWidget *w, int dataIndex, int dataCount);
     bool getSoftPV(QString pv, int *indx, QWidget *w);
     void BuildSoftPVList(QWidget *w);
 
@@ -97,7 +97,7 @@ private:
     QMutex mutex;
     knobData *KnobData;
     int KnobDataArraySize;
-    int timerId;
+    int timerId, prvRepetitionRate;
     QMap<QString, int> softPV_WidgetList;
     QMap<QString, int> softPV_List;
 

@@ -33,16 +33,33 @@
 caChoice::caChoice(QWidget *parent) : QWidget(parent)
 {
 
+    // when called from designer, we would like to know it
+    bool inDesigner = false;
+    QVariant source = qApp->property("APP_SOURCE").value<QVariant>();
+    if(source.isValid()) {
+        if(!source.isNull()) {
+            QString test = source.toString();
+            if(test.contains("DESIGNER")) inDesigner = true;
+        }
+    }
+
     // to start with, clear the stylesheet, so that playing around
     // is not possible.
     setStyleSheet("");
 
     numCells = 2;
-    labels << "1" << "2" << "3" << "4" << "5" << "6" << "7" << "8" << "9" << "10" << "11" << "12" << "13" << "14" << "15" << "16";
+    savedList << "";
+
+    // if not designer, show only one empty button at first, so that we do not enlarge the window unnecesairily
+    if(inDesigner) {
+        labels << "1" << "2" << "3" << "4" << "5" << "6" << "7" << "8" << "9" << "10" << "11" << "12" << "13" << "14" << "15" << "16";
+    } else {
+        labels << "";
+    }
     texts << "1" << "2" << "3" << "4" << "5" << "6" << "7" << "8" << "9" << "10" << "11" << "12" << "13" << "14" << "15" << "16";
     signalMapper = new QSignalMapper(this);
 
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    //setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     grid = new QGridLayout(this);
     grid->setMargin(0);
     grid->setSpacing(2);
@@ -97,17 +114,19 @@ void caChoice::arrangeCells(QStringList list, int indx)
     signalMapper = new QSignalMapper(this);
 
     // create all buttons
+    int count = 0;
     for (int i = 0; i < numCells ;i++) {
         EPushButton* temp;
         //printf("numCells=%d start=%d end=%d\n", numCells, thisStartBit, thisEndBit);
         if((i + thisStartBit) > numCells) break;
         if((i + thisStartBit) > thisEndBit) break;
         if((i + thisStartBit) >= list.count()) break;
+        count++;
 
         if(list.at(i + thisStartBit).trimmed().size() > 0) {
           temp = new EPushButton(list.at(i + thisStartBit), this);
         } else {
-            QString s = ""; // QString::number(i + thisStartBit);
+            QString s = "";
             temp = new EPushButton(s, this);
         }
         temp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -123,18 +142,25 @@ void caChoice::arrangeCells(QStringList list, int indx)
         QString style("");
         temp->setCheckable(true);
         // mark activ button
-        if(i==indx) {
-            style.append("* {border-style: solid; border-width: 1px 3px 1px 3px; padding:0px 1px 0px 1px; margin:0px;}");
-            temp->setStyleSheet(style);
+        if((i+thisStartBit) == indx) {
+            if(thisColorMode != Default) {
+                style.append("* {border-style: solid; border-width: 1px 3px 1px 3px; padding:0px 1px 0px 1px; margin:0px;}");
+                temp->setStyleSheet(style);
+            }
             temp->setChecked(true);
         } else {
-            style.append("* {border-style: solid; border-width: 0px; padding:1px 4px 1px 4px; margin:0px;}");
-            temp->setStyleSheet(style);
+            if(thisColorMode != Default) {
+                style.append("* {border-style: solid; border-width: 0px; padding:1px 4px 1px 4px; margin:0px;}");
+                temp->setStyleSheet(style);
+            }
             temp->setChecked(false);
         }
+
         // take care of stacking
         if(thisStacking == Row) {
           grid->addWidget(temp, i, 0);
+        } else if(thisStacking == RowInverse) {
+          grid->addWidget(temp, numCells-i-1, 0);
         } else if(thisStacking == Column) {
           grid->addWidget(temp, 0, i);
         } else {
@@ -153,8 +179,27 @@ void caChoice::arrangeCells(QStringList list, int indx)
         connect(temp, SIGNAL(clicked()), signalMapper, SLOT(map()));
     }
 
-    lastValue = indx;
-    connect(signalMapper, SIGNAL(mapped(QString)),this, SIGNAL(clicked(QString)));
+    // when buttons available connect them
+    if(count > 0) {
+       lastValue = indx;
+       connect(signalMapper, SIGNAL(mapped(QString)),this, SIGNAL(clicked(QString)));
+
+       // when no buttons, make at least one
+    } else {
+        QString s = "";
+        EPushButton* temp = new EPushButton(s, this);
+        temp->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        if(thisScaleMode == EPushButton::None) {  // in this case we may use font
+            temp->setFont(this->font());
+        } else {
+            temp->setFontScaleMode(thisScaleMode);
+        }
+        temp->setMinimumSize(2,2); //important for resizing as small as possible
+        temp->setBotTopBorderWidth(0);
+        grid->addWidget(temp, 0, 0);
+        cells.push_back(temp);
+        temp->show();
+    }
 }
 
 void caChoice::setAlignment(alignmentHor alignment) {
@@ -166,36 +211,38 @@ void caChoice::setColors(QColor back, QColor fore, QColor border, alignmentHor a
 {
     //set colors and styles
 
-    // default get it from external or internal stylesheet or nothing, do not bother about alignment
-
+    // default get it from external or internal stylesheet or nothing
     if(thisColorMode == Default) {
-        oldColorMode = thisColorMode;
-
-        if(border != oldBorderColor) {
-            QString bordercolor = "border-color: rgba(%1, %2, %3, %4); ";
-            bordercolor = bordercolor.arg(border.red()).arg(border.green()).arg(border.blue()).arg(border.alpha());
-            QString style ="QPushButton { ";
-            style.append(bordercolor);
-            style.append("} ");
-            setStyleSheet(style);
-        } else {
-           setStyleSheet("");
+        QString style ="QPushButton { border-radius: 2px; padding: 3px; border-width: 3px; border-style: outset; ";
+        switch(alignment) {
+        case left:
+            style.append("text-align: left; ");
+            break;
+        case right:
+            style.append("text-align: right; ");
+            break;
+        case center:
+            style.append("text-align: center; ");
+            break;
         }
+        style.append("} ");
+        style.append("QPushButton:checked {border-width: 3px; border-style: inset;} QPushButton:default {border: 3px; border-style: outset;}");
+        setStyleSheet(style);
         return;
     }
 
-    if((back != oldBackColor) || fore != oldForeColor || border != oldBorderColor || alignment != oldAlignment || oldColorMode != thisColorMode)
-    {
+    // in case of static
+     else {
         QColor baseColor(back);
         QColor highlightColor(back);
         QColor shadowColor1(back);
         QColor shadowColor2(back);
         QColor activColor(baseColor);
+
         highlightColor.setHsv(baseColor.hue(), baseColor.saturation(), baseColor.value());
+        activColor.setHsv(baseColor.hue(), baseColor.saturation(), (int) qMin((int)(baseColor.value() * 1.1), 255) );
         shadowColor1.setHsv(baseColor.hue(), (int) (baseColor.saturation() * 0.6), baseColor.value());
         shadowColor2.setHsv((int) (baseColor.hue()*0.7), (int) (baseColor.saturation() * 0.7), (int) (baseColor.value() * 0.7));
-
-        activColor.setHsv(baseColor.hue(), baseColor.saturation(), (int) qMin((int)(baseColor.value() * 1.1), 255) );
 
         QString background =  "";
         background.append("background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, ");
@@ -208,6 +255,7 @@ void caChoice::setColors(QColor back, QColor fore, QColor border, alignmentHor a
                 .arg(baseColor.red()).arg(baseColor.green()).arg(baseColor.blue()).arg(baseColor.alpha())
                 .arg(baseColor.red()).arg(baseColor.green()).arg(baseColor.blue()).arg(baseColor.alpha())
                 .arg(shadowColor2.red()).arg(shadowColor2.green()).arg(shadowColor2.blue()).arg(shadowColor2.alpha());
+
 
         background.append("border-radius: 2px;padding: 3px; border-width: 1px;");
 
@@ -234,7 +282,7 @@ void caChoice::setColors(QColor back, QColor fore, QColor border, alignmentHor a
         }
 
         style.append("} ");
-        QString hover = "QPushButton:hover {background-color: rgba(%1, %2, %3, %4);}  QPushButton:pressed {background-color: rgba(%5, %6, %7, %8)};";
+        QString hover = "QPushButton:hover {background-color: rgba(%1, %2, %3, %4);}  QPushButton:pressed {background-color: rgba(%5, %6, %7, %8);}";
         hover = hover.arg(highlightColor.red()).arg(highlightColor.green()).arg(highlightColor.blue()).arg(highlightColor.alpha())
                 .arg(thisBorderColor.red()).arg(thisBorderColor.green()).arg(thisBorderColor.blue()).arg(thisBorderColor.alpha());
         style.append(hover);
@@ -260,12 +308,11 @@ void caChoice::setColors(QColor back, QColor fore, QColor border, alignmentHor a
 
         disabled.append("; etch-disabled-text: true; color: grey;}");
         style.append(disabled);
-        setStyleSheet(style);
-        oldBorderColor = border;
-        oldBackColor = back;
-        oldForeColor = fore;
-        oldAlignment = alignment;
-        oldColorMode = thisColorMode;
+        if((QString::compare(style, styleSheet()) != 0)  || (thisColorMode != oldColorMode)) {
+            //printf("%s setcolors set style %s\n", qasc(this->objectName()), qasc(style));
+            setStyleSheet(style);
+            oldColorMode = thisColorMode;
+        }
     }
 }
 
@@ -334,22 +381,50 @@ void caChoice::setStacking(Stacking stacking)
 
 void caChoice::updateChoice()
 {
-
     int i = 0;
     foreach(EPushButton *temp, cells) {
         QString style("");
         // mark activ button
         if(i==lastValue) {
-            style.append("* {border-style: inset; border-width: 1px 3px 1px 3px; padding:0px 1px 0px 1px; margin:0px;}");
-            temp->setStyleSheet(style);
+            if(thisColorMode != Default) {
+                style.append("* {border-style: inset; border-width: 1px 3px 1px 3px; padding:0px 1px 0px 1px; margin:0px;}");
+                temp->setStyleSheet(style);
+            }
             temp->setChecked(true);
         } else {
-            style.append("* {border-style: solid; border-width: 0px; padding:1px 4px 1px 4px; margin:0px;}");
-            temp->setStyleSheet(style);
+            if(thisColorMode != Default) {
+                style.append("* {border-style: solid; border-width: 0px; padding:1px 4px 1px 4px; margin:0px;}");
+                temp->setStyleSheet(style);
+            }
             temp->setChecked(false);
         }
         i++;
-     }
+    }
+}
+
+void caChoice::setValue(int value)
+{
+    int i = 0;
+    lastValue = value;
+    foreach(EPushButton *temp, cells) {
+        QString style("");
+        // mark activ button
+        if((i+ thisStartBit)==lastValue) {
+            if(thisColorMode != Default) {
+                style.append("* {border-style: solid; border-width: 1px 3px 1px 3px; padding:0px 1px 0px 1px; margin:0px;}");
+                temp->setStyleSheet(style);
+
+            }
+            temp->setChecked(true);
+        } else {
+            if(thisColorMode != Default) {
+                style.append("* {border-style: solid; border-width: 0px; padding:1px 4px 1px 4px; margin:0px;}");
+                temp->setStyleSheet(style);
+            }
+            temp->setChecked(false);
+        }
+        i++;
+    }
 }
 
 void caChoice::populateCells(QStringList list, int indx)
@@ -357,6 +432,7 @@ void caChoice::populateCells(QStringList list, int indx)
     numCells = list.size();
     if(numCells > 16) numCells=16;
     arrangeCells(list, indx);
+    savedList = list;
 }
 
 void caChoice::setStartBit(int const &bit) {
@@ -395,17 +471,14 @@ bool caChoice::eventFilter(QObject *obj, QEvent *event)
         if (event->type() == QEvent::Enter) {
             if(!thisAccessW) {
                 QApplication::setOverrideCursor(QCursor(Qt::ForbiddenCursor));
-                //setEnabled(false);
             } else {
                 QApplication::restoreOverrideCursor();
             }
         } else if(event->type() == QEvent::Leave) {
             QApplication::restoreOverrideCursor();
-            //setEnabled(true);
         }
         return QObject::eventFilter(obj, event);
 }
-
 
 void caChoice::resizeEvent(QResizeEvent *e)
 {

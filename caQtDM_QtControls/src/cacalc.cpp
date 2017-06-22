@@ -38,7 +38,10 @@ caCalc::caCalc( QWidget *parent ) :  ESimpleLabel(parent)
     thisChannelD="";
     thisVariable="";
     thisValue = 0.0;
+    thisPV=QStringList();
     keepText="";
+
+    setVariableType(scalar);
 
     setFontScaleMode(WidthAndHeight);
     setForeAndBackground(Qt::black, Qt::lightGray);
@@ -71,7 +74,39 @@ void caCalc::setValue(double value)
     } else if(thisEventSignal == onAnyChange) {
         emit emitSignal((int) value);
         emit emitSignal(value);
+    } else if(thisEventSignal == TriggerZeroToOne) {
+        if((qRound(thisValue) == 0) && (qRound(value) == 1)) {
+            emit emitSignal((int) value);
+            emit emitSignal(value);
+        }
+    } else if(thisEventSignal == TriggerOneToZero) {
+        if((qRound(thisValue) == 1) && (qRound(value) == 0)) {
+            emit emitSignal((int) value);
+            emit emitSignal(value);
+        }
     }
+    thisValue =value;
+}
+
+void caCalc::setValue(QString value)
+{
+    setTextLine(value);
+}
+
+void caCalc::setValue(QRect value)
+{
+    setTextLine("QRect=ok");
+
+    // emit signal when requested
+    if(thisEventSignal == onFirstChange) {
+        if(!eventFired) {
+            emit emitSignal(value);
+        }
+        eventFired = true;
+    } else if(thisEventSignal == onAnyChange) {
+        emit emitSignal(value);
+    }
+    thisValue =0;
 }
 
 void caCalc::setTextLine(const QString &txt)
@@ -91,4 +126,35 @@ void caCalc::setForeAndBackground(QColor fg, QColor bg)
             arg(fg.red()).arg(fg.green()).arg(fg.blue());
 
     setStyleSheet(thisStyle);
+}
+
+void caCalc::setVariableType(varType vartype) {
+    thisVarType = vartype;
+    if(vartype == vector) {
+        setPropertyVisible(calcabcd, false);
+        setPropertyVisible(channela, false);
+        setPropertyVisible(channelb, false);
+        setPropertyVisible(channelc, false);
+        setPropertyVisible(channeld, false);
+        setPropertyVisible(initialvalue, false);
+        setPropertyVisible(pvlist, true);
+    } else {
+        setPropertyVisible(calcabcd, true);
+        setPropertyVisible(channela, true);
+        setPropertyVisible(channelb, true);
+        setPropertyVisible(channelc, true);
+        setPropertyVisible(channeld, true);
+        setPropertyVisible(initialvalue, true);
+        setPropertyVisible(pvlist, false);
+    }
+}
+
+bool caCalc::isPropertyVisible(Properties property)
+{
+    return designerVisible[property];
+}
+
+void caCalc::setPropertyVisible(Properties property, bool visible)
+{
+    designerVisible[property] = visible;
 }

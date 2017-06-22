@@ -1,3 +1,49 @@
+record(mbbi, "cachoice_test:CHOICE") {
+   field(ZRST, "Undefined")
+   field(ONST, "Option 1")
+   field(TWST, "Option 2")
+   field(THST, "Option 3")
+   field(FRST, "Option 4")
+   field(FVST, "Option 5")
+}
+
+record(aao, "ACM:TEST:DOUBLE_AAO"){
+        field(FTVL, "DOUBLE")
+        field(NELM, "100")
+        field(PREC, "2")
+}
+
+record(mbbo, "88:MultipleBitMBBO") {
+  field(DTYP, "Soft Channel")
+  field(FLNK, "88:MultipleBitMBBI")
+  field(OUT, "88:MultipleBitMBBI PP")
+  field(ZRVL, "0")
+  field(ONVL, "1")
+  field(TWVL, "2")
+  field(THVL, "3")
+  field(SCAN, "Passive")
+  field(FRVL, "4")
+  field(FVVL, "5")
+  field(SXVL, "6")
+  field(SVVL, "7")
+  field(EIVL, "8")
+  field(ZRST, "0")
+  field(ONST, "1")
+  field(TWST, "2")
+  field(THST, "3")
+  field(FRST, "4")
+  field(FVST, "5")
+  field(SXST, "6")
+  field(SVST, "7")
+  field(EIST, "8")
+}
+
+record(mbbi, "88:MultipleBitMBBI") {
+  field(SCAN, "Passive")
+  field(DTYP, "Soft Channel")
+}
+
+
 record(ao,"ACM:TEST:AO") {
     field(DESC,"analog output record")
     field(SCAN,"Passive")
@@ -19,7 +65,7 @@ record(ao,"ACM:TEST:AO") {
     field(LINR,"NO CONVERSION")
     field(EGUF,"0.0000000e+00")
     field(EGUL,"0.0000000e+00")
-    field(EGU,"volts")
+    field(EGU,"V")
     field(DRVH,"1000.0")
     field(DRVL,"-1000.0")
     field(HOPR,"900.0")
@@ -245,9 +291,30 @@ record(mbbo,"ACM:TEST:MBBO") {
         field(ZRVL, "0")
         field(ONVL, "1")
         field(TWVL, "2")
-        field(ZRST, "OFF")
-        field(ONST, "")
-        field(TWST, "RESET")
+        field(THVL, "3")
+        field(FRVL, "4")
+        field(FVVL, "5")
+        field(SXVL, "6")
+        field(SVVL, "7")
+        field(EIVL, "8")
+        field(NIVL, "9")
+        field(TEVL, "10")
+        field(ELVL, "11")
+        field(TVVL, "12")
+        field(TTVL, "13")
+        field(FTVL, "14")
+        field(FFVL, "15")
+        
+        field(ZRST, "100.00 Hz")
+        field(ONST, "50.00 Hz")
+        field(TWST, "33.33 Hz")
+        field(THST, "25.00 Hz")
+        field(FRST, "16.66 Hz")
+        field(FVST, "10.00 Hz")
+        field(SXST, "8.33 Hz")
+        field(SVST, "5.00 Hz")
+        field(EIST, "2.50 Hz")
+        field(NIST, "1.00 Hz")      
 }
 
 record(mbbo,"ACM:TEST1:MBBO") {
@@ -257,6 +324,18 @@ record(mbbo,"ACM:TEST1:MBBO") {
         field(ZRST, " ")
         field(ONST, " ")
         field(TWST, " ")        
+}
+
+record(mbbo,"ACM:TEST2:MBBO") {
+        field(ZRVL, "0")
+        field(ONVL, "1")
+        field(ZRST, "LOW")
+        field(ONST, "HIGH")      
+}
+
+record(bo,"ACM:TEST3:BO") {
+        field(ZNAM,"LOW")
+        field(ONAM,"HIGH")
 }
 
 
@@ -492,6 +571,13 @@ record(waveform, "ACM:TEST:LONG_WAVE"){
 
 record(waveform, "ACM:TEST:CHAR_WAVE"){
         field(FTVL, "CHAR")
+        field(NELM, "100")
+	field(HOPR,"1200")
+	field(LOPR,"-200")
+}
+
+record(waveform, "ACM:TEST:UCHAR_WAVE"){
+        field(FTVL, "UCHAR")
         field(NELM, "100")
 	field(HOPR,"1200")
 	field(LOPR,"-200")
@@ -895,19 +981,19 @@ record(waveform, "ACM:REG2D:Y"){
 
 record(ao, "roi:x"){
 	field(DESC, "Sollwert")
-	field(PREC, "0")
+	field(PREC, "3")
 }
 record(ao, "roi:y"){
 	field(DESC, "Sollwert")
-	field(PREC, "0")
+	field(PREC, "3")
 }
 record(ao, "roi:w"){
 	field(DESC, "Sollwert")
-	field(PREC, "0")
+	field(PREC, "3")
 }
 record(ao, "roi:h"){
 	field(DESC, "Sollwert")
-	field(PREC, "0")
+	field(PREC, "3")
 }
 record(ao, "99:SliderAO") {
   field(DTYP, "Soft Channel")
@@ -946,7 +1032,139 @@ record(mbbiDirect, "MBBIDIECT" )
  field(DTYP, "Soft Channel")
 }
 
+############## these records are used for the simulation in Geiss
 
+record(ao, "SI"){
+	field(DESC, "Boundary minimum")
+	field(PREC, "3")
+}
 
+record(ao, "SX")
+{
+  field(DTYP, "Soft Channel")
+  field(PREC, "1")
+  field(DRVH, "1000")
+  field(DRVL, "-1000")
+  field(HOPR, "900")
+  field(LOPR, "100")
+  field(FLNK, "SZ")
+  field(OUT, "SZ PP")
+}
 
+record(ao, "SY")
+{
+  field(DTYP, "Soft Channel")
+  field(PREC, "1")
+  field(FLNK, "SZ")
+  field(OUT, "SYC PP")
+}
+
+record(ao, "SX")
+{
+  field(DTYP, "Soft Channel")
+  field(PREC, "1")
+  field(FLNK, "SZ")
+  field(OUT, "SXC PP")
+}
+
+record(calc, "SXC")
+{
+  field(INPA, "SX MS")
+  field(CALC, "0.07*(A-500)/20")
+}
+
+record(calc, "SYC")
+{
+  field(INPA, "SY MS")
+  field(CALC, "0.07*(A-1250)/50")
+}
+
+record(calc, "SZ")
+{
+	field(INPA, "SXC MS")
+	field(INPB, "SYC MS")
+	field(CALC,"(0.25*A*A*A*A-0.5*A*A) -0.12*A + (0.25*B*B*B*B-0.5*B*B) +1.0 -0.05*B")
+}
+
+###########################################################################################
+
+#record(waveform, "ACM:PICTURE"){
+#        field(DESC, "16bit waveform")
+#        field(FTVL, "SHORT")
+#        field(NELM, "16000000")
+#        field(INP, "MTEST-CAQTDM-CAMERA:FPICTURE CP")
+#}
+
+#record(calc, "ACM:PICTURE:WIDTH"){
+#        field(CALC, "A")
+#        field(DESC, "width")
+#        field(INPA, "MTEST-CAQTDM-CAMERA:WIDTH CP")
+#}
+#record(calc, "ACM:PICTURE:HEIGHT"){
+#        field(CALC, "A")
+#        field(DESC, "height")
+#        field(INPA, "MTEST-CAQTDM-CAMERA:HEIGHT CP")
+#}
+
+record(ao, "ACM:BPM1") {
+}
+record(ao, "ACM:BPM2") {
+}
+record(ao, "ACM:BPM3") {
+}
+record(ao, "ACM:BPM4") {
+}
+record(ao, "ACM:BPM5") {
+}
+
+record(ai,"ACM:BPM1:X") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"10")
+}
+record(ai,"ACM:BPM1:Y") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"10")
+}
+record(ai,"ACM:BPM2:X") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"50")
+}
+record(ai,"ACM:BPM2:Y") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"10")
+}
+record(ai,"ACM:BPM3:X") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"110")
+}
+record(ai,"ACM:BPM3:Y") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"20")
+}
+record(ai,"ACM:BPM4:X") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"200")
+}
+record(ai,"ACM:BPM4:Y") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"10")
+}
+record(ai,"ACM:BPM5:X") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"350")
+}
+record(ai,"ACM:BPM5:Y") {
+    field(SCAN,"Passive")
+    field(PINI,"YES")
+    field(INP,"10")
+}
 
